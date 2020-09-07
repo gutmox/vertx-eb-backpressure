@@ -1,5 +1,6 @@
 package com.gutmox;
 
+import com.gutmox.redis.RedisDataDao;
 import io.reactivex.Completable;
 import io.reactivex.Single;
 import io.vertx.core.json.JsonObject;
@@ -14,12 +15,15 @@ import java.util.Arrays;
 public class MainVerticle extends AbstractVerticle {
 
 	private static final String HEALTH_CHECK = "/health";
-	private static final String HELLO = "/hello";
+	private static final String DATA = "/data";
+	private static final String EB_DATA = "/eb-data";
 	private static final String ROOT = "/";
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(MainVerticle.class.getName());
 	private final String HOST = "0.0.0.0";
 	private final Integer PORT = 8080;
+
+	private final RedisDataDao redisDataDao = new RedisDataDao();
 
 	@Override
 	public Completable rxStart() {
@@ -27,24 +31,44 @@ public class MainVerticle extends AbstractVerticle {
 			error.getMessage() + error.getCause() + Arrays.toString(error.getStackTrace()) + error
 				.getLocalizedMessage()));
 
+		vertx.eventBus().consumer("data").toFlowable().subscribe(msg ->{
+			System.out.println(msg.body());
+			msg.reply(msg + " " + msg);
+		});
+
 		return createRouter().flatMap(router -> startHttpServer(HOST, PORT, router))
 			.flatMapCompletable(httpServer -> {
 				LOGGER.info("HTTP server started on http://{0}:{1}", HOST, PORT.toString());
 				return Completable.complete();
-			});
+			}).andThen(redisDataDao.init());
 	}
 
 	private Single<Router> createRouter() {
 		Router router = Router.router(vertx);
 		router.get(HEALTH_CHECK).handler(this::healthCheck);
-		router.get(HELLO).handler(this::hello);
-		router.get(ROOT).handler(this::hello);
+		router.get(ROOT).handler(this::getData);
+		router.get(DATA).handler(this::getData);
+		router.get(EB_DATA).handler(this::getDataFromEventBus);
 		return Single.just(router);
 	}
 
-	private void hello(RoutingContext context) {
-		context.response().putHeader("content-type", "application/json")
-			.end(new JsonObject().put("hello", "world").encode());
+	private void getDataFromEventBus(RoutingContext context) {
+
+		vertx.eventBus().rxRequest("data", context.queryParam("key").get(0)).subscribe(res -> {
+
+			context.response().putHeader("content-type", "application/json")
+				.end(new JsonObject().put("key", res).encode());
+		});
+
+	}
+
+	private void getData(RoutingContext context) {
+
+		redisDataDao.getKey(context.queryParam("key").get(0)).subscribe(res -> {
+
+			context.response().putHeader("content-type", "application/json")
+				.end(new JsonObject().put("key", res).encode());
+		});
 	}
 
 	private void healthCheck(RoutingContext context) {

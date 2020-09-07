@@ -14,6 +14,7 @@ java_library(
     deps = [
         "@maven//:io_vertx_vertx_core",
         "@maven//:io_vertx_vertx_rx_java2",
+        "@maven//:io_vertx_vertx_redis_client",
         "@maven//:io_vertx_vertx_web",
         "@maven//:io_reactivex_rxjava2_rxjava",
     ],

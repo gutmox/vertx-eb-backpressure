@@ -1,0 +1,75 @@
+load("@io_bazel_rules_docker//java:image.bzl", "java_image")
+load(
+    "@io_bazel_rules_docker//container:container.bzl",
+    "container_image",
+    "container_pull",
+    "container_push",
+)
+
+java_library(
+    name = "all-external-targets",
+    srcs = glob(["**/src/main/java/**/*.java"]),
+    resources = glob(["**/src/main/resources/**"]),
+    visibility = ["//visibility:public"],
+    deps = [
+        "@maven//:io_vertx_vertx_core",
+        "@maven//:io_vertx_vertx_rx_java2",
+        "@maven//:io_vertx_vertx_web",
+        "@maven//:io_reactivex_rxjava2_rxjava",
+    ],
+)
+
+
+java_library(
+    name = "units-tests-deps",
+    srcs = glob(["**/src/test/java/**/*.java"]),
+    resources = glob(["**/src/test/resources/**"]),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":all-external-targets",
+        "@maven_test//:org_assertj_assertj_core",
+        "@maven_test//:org_junit_jupiter_junit_jupiter_api",
+        "@maven_test//:org_junit_jupiter_junit_jupiter_engine",
+        "@maven_test//:org_junit_platform_junit_platform_console",
+    ],
+)
+
+java_test(
+    name = "tests",
+    srcs = glob([
+        "*.java",
+    ]),
+    args = ["--select-package=com.gutmox"],
+    main_class = "org.junit.platform.console.ConsoleLauncher",
+    use_testrunner = False,
+    visibility = ["//visibility:public"],
+    runtime_deps = [
+        ":units-tests-deps",
+    ],
+)
+
+java_binary(
+    name = "service",
+    main_class = "io.vertx.core.Launcher",
+    args = ["run com.gutmox.MainVerticle"],
+    deploy_manifest_lines = ["Main-Verticle: com.gutmox.MainVerticle"],
+    visibility = ["//visibility:public"],
+    runtime_deps = [":all-external-targets"],
+)
+
+container_image(
+    name = "container",
+    base = "@openjdk//image",
+    cmd = [
+        "java",
+        "-jar",
+        "service_deploy.jar",
+    ],
+    env = {
+        "TZ": "Europe/Madrid",
+        "VERTX_CONFIG_PATH": "/config.yaml",
+    },
+    files = [
+        ":service_deploy.jar",
+    ],
+)

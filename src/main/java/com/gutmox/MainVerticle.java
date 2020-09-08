@@ -1,5 +1,6 @@
 package com.gutmox;
 
+import com.gutmox.data.processor.DataProcessor;
 import com.gutmox.redis.RedisDataDao;
 import io.reactivex.Completable;
 import io.reactivex.Single;
@@ -31,10 +32,7 @@ public class MainVerticle extends AbstractVerticle {
 			error.getMessage() + error.getCause() + Arrays.toString(error.getStackTrace()) + error
 				.getLocalizedMessage()));
 
-		vertx.eventBus().consumer("data").toFlowable().subscribe(msg ->{
-			System.out.println(msg.body());
-			msg.reply(msg + " " + msg);
-		});
+		new DataProcessor(vertx, redisDataDao);
 
 		return createRouter().flatMap(router -> startHttpServer(HOST, PORT, router))
 			.flatMapCompletable(httpServer -> {

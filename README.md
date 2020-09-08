@@ -1,6 +1,6 @@
-# vertx-boost
+# vertx Event Bus Backpressure
 
-vertx simple boost 
+Vertx Proof of Concept to control backpressure to Redis using the event bus. 
 
 ## Building and running using Bazel
 

@@ -55,7 +55,7 @@ public class MainVerticle extends AbstractVerticle {
 		vertx.eventBus().rxRequest("data", context.queryParam("key").get(0)).subscribe(res -> {
 
 			context.response().putHeader("content-type", "application/json")
-				.end(new JsonObject().put("key", res).encode());
+				.end(new JsonObject().put("key", res.body()).encode());
 		});
 
 	}
